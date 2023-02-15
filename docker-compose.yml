@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  mysql:
+    # コンテナ名を指定
+    container_name: mysql_db
+    image: mysql:8.0.20
+    # OSの起動時にコンテナを起動させる
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=myapp
+    ports:
+      - 3306:3306
+    volumes:
+      - db:/var/lib/mysql:delegated
+    healthcheck:
+      test: mysqladmin ping -h 127.0.0.1 -u$$DBUSER -p$$DBPASS
+
+  web:
+    # コンテナ名を指定
+    container_name: web
+    build:
+      # 「.」は本docker-compose.ymlがあるディレクトリ（現在のディレクトリ）を指す
+      # 今回は、Dockerfile をルートディレクトリに配置する
+      context: .
+    ports:
+      - "8080:8080"
+    # depends_on は起動順を制御するだけである。
+    # したがって、postgres コンテナが起動してから api コンテナが起動するという保証はされない
+    tty: true
+    environment:
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=myapp
+      - MYSQL_HOST=mysql_db
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - .:/var/lib/docker
+
+volumes:
+  db:
